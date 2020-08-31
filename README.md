@@ -1,4 +1,4 @@
-# gta5-tracking
+# Парсинг, преобразавание логов с треками и их визуалация:
 Пример запуска скрипта: python3 gta5_viz_track.py --folder_path=data/gta_99_test/vid-1 
 --folder_path - путь до папки с гта видео и файлов log.json
 
