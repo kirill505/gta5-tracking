@@ -6,47 +6,60 @@ import argparse
 import numpy as np
 
 #converting current log.json files to coco format
-def to_coco():
+def to_coco(log_path, folders):
     with open(log_path) as json_file:
-        data = json.load(json_file)            
-        new_dict = dict()
-        new_dict = {'annotations': []} 
-        
-        dct = {e['id']: [] for e in data}
-        
-        count = 0
-        for annot in data:        
-            if annot['id'] in dct.keys():
-                for frame in annot['hist']:
-                    frame_height = frame['frame_height']*1080
-                    frame_width = frame['frame_width']*1920
-                    frame_x = frame['frame_x']*1920
-                    frame_y = frame['frame_y']*1080
-                    bbox = [frame_x, frame_y, frame_width, frame_height]
-                    bbox[2] = bbox[0] + bbox[2]
-                    bbox[3] =  bbox[1] + bbox[3]
+        data = json.load(json_file)
+        new_dict = {'annotations': []}
 
-                    new_dict['annotations'].append({
-                        "class_id": annot['id'],
-                        "bbox": bbox,
-                        "frameId": frame['frameId'],
-                        "attributes": {'speed': frame['speed'], 
-                                    'time': frame['time'],
-                                    'bot_x': frame['bot_x']*500,
-                                    'bot_y': frame['bot_y']*800,
-                                    'frameFirstDet_height': frame['frameFirstDet_height'], 
-                                    'frameFirstDet_width': frame['frameFirstDet_width'], 
-                                    'frameFirstDet_x': frame['frameFirstDet_x'], 
-                                    'frameFirstDet_y': frame['frameFirstDet_y'], 
-                                    'ground_point_x': frame['ground_point_x'], 
-                                    'ground_point_y': frame['ground_point_y'],}
-                            })
-                    count+=len(frame)
-            else:
-                continue
-        print(dct[24])
+        width = get_video_prop(folders)[2]
+        height = get_video_prop(folders)[3]
+
+        for annot in data:
+            for frame in annot['hist']:
+                frame_height = frame['frame_height']*height
+                frame_width = frame['frame_width']*width
+                frame_x = frame['frame_x']*width
+                frame_y = frame['frame_y']*height
+                bbox = [frame_x, frame_y, frame_width, frame_height]
+                bbox[2] = bbox[0] + bbox[2]
+                bbox[3] =  bbox[1] + bbox[3]
+
+                new_dict['annotations'].append({
+                    "class_id": annot['id'],
+                    "bbox": bbox,
+                    "frameId": frame['frameId'],
+                    "attributes": {
+                        'speed': frame['speed'], 
+                        'time': frame['time'],
+                        'bot_x': frame['bot_x']*500,
+                        'bot_y': frame['bot_y']*800,
+                        'frameFirstDet_height': frame['frameFirstDet_height'], 
+                        'frameFirstDet_width': frame['frameFirstDet_width'], 
+                        'frameFirstDet_x': frame['frameFirstDet_x'], 
+                        'frameFirstDet_y': frame['frameFirstDet_y'], 
+                        'ground_point_x': frame['ground_point_x'], 
+                        'ground_point_y': frame['ground_point_y'],}
+                        })
+        
         with open(args.folder_path+'/new_dict.json', 'w') as json_file:
             json.dump(new_dict, json_file)
+
+def get_video_prop(folders):
+    mp4state = False
+
+    for element in folders:
+        if ".mp4" in element:
+            video_file_path = args.folder_path + os.sep + element
+            mp4state = True
+        
+    if mp4state is False:
+        sys.exit("no video file found")
+
+    cap = cv2.VideoCapture(video_file_path)
+    width = cap.get(3)
+    height = cap.get(4)
+    
+    return [mp4state, video_file_path, width, height]
 
 #visualisation 
 def viz_track():
@@ -159,10 +172,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     log_path = args.folder_path + os.sep + 'log.json'
     folders = os.listdir(args.folder_path)
+    
     if args.video:
         video_on = 1
     else:
         video_on = 0
 
-    to_coco()
+    to_coco(log_path, folders)
+    
     viz_track()
