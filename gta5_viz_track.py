@@ -4,12 +4,13 @@ import json
 import sys
 import argparse
 import numpy as np
+import csv
 
 #converting current log.json files to coco format
 def to_coco(log_path, folders):
     with open(log_path) as json_file:
         data = json.load(json_file)
-        new_dict = {'annotations': []}
+        new_dict = {'annotations': [], 'stopped_vehicle': []}
 
         width = get_video_prop(folders)[2]
         height = get_video_prop(folders)[3]
@@ -96,6 +97,7 @@ def viz_track():
             if annot['frameId'] in dct.keys():
                 element = {
                     'track_id': annot['class_id'], 
+                    'frameId': annot['frameId'], 
                     'bbox': annot['bbox'], 
                     'speed': round(annot['attributes']['speed'], 2), 
                     'topdown_xy': [annot['attributes']['bot_x'], annot['attributes']['bot_y']], 
@@ -103,11 +105,13 @@ def viz_track():
                 dct[annot['frameId']].append(element)
             else:
                 continue
-        
         cap = cv2.VideoCapture(video_file_path)
         counter = 1
         img = np.zeros((500,800,3), np.uint8)
         img2 = np.zeros((100,120,3), np.uint8)
+
+        stopped_vehicle = dict()
+        stopped_vehicle = {e['class_id']: [] for e in data['annotations']}
         while True:
             ret, frame = cap.read()
             if ret is False:
@@ -118,33 +122,36 @@ def viz_track():
             
             if counter in dct.keys():
                 annots = dct[counter]
+                prev_speed = annots[0]['speed']
                 for annot in annots:                        
                     dets = [int(x) for x in annot['bbox']]
                     cv2.rectangle(frame, (dets[0], dets[1]), (dets[2], dets[3]), rect_color, 2)
 
                     track_id = str(annot['track_id'])
                     cx = dets[0] + 12
-                    cy = dets[1] - 10
+                    cy = dets[3] - 10
                     cv2.putText(frame, f"track_id - {track_id}", (cx, cy), cv2.FONT_HERSHEY_DUPLEX, 1, track_color, 2)
                     speed = str(annot['speed'])
-                    cx = dets[0] + 30
-                    cy = dets[1] - 40                        
+                    cx = dets[0] + 12
+                    cy = dets[3] - 40                        
                     cv2.putText(frame, f"speed - {speed}", (cx, cy), cv2.FONT_HERSHEY_DUPLEX, 1, class_color, 2)
-
-                    if annot['speed'] < 1 and annot['speed'] > 0:
-                        cx = dets[0] + 60
-                        cy = dets[1] - 70                        
+                    annot['stopped'] = 0
+                    stopped_vehicle[annot['track_id']] = 0
+                    if  prev_speed < 1 and annot['speed'] < 1 and annot['speed'] >= 0:
+                        cx = dets[0] + 12
+                        cy = dets[3] - 70                        
                         cv2.putText(frame, f"stopped", (cx, cy), cv2.FONT_HERSHEY_DUPLEX, 1, stopped_color, 2)
+                        annot['stopped'] = 1
+                        stopped_vehicle[annot['track_id']] = 1
                         #cv2.circle(img,(topdown_xy[0], topdown_xy[1]), 1, stopped_color, -1)
                         #cv2.circle(img2,(ground_point[0], ground_point[1]), 1, stopped_color, -1)
                         #cv2.putText(img, f"stopped", (topdown_xy[0], topdown_xy[1]), cv2.FONT_HERSHEY_DUPLEX, 1, stopped_color, 2)
-
+                    prev_speed = annot['speed']
                     topdown_xy = [int(x) for x in annot['topdown_xy']]
                     cv2.circle(img,(topdown_xy[0], topdown_xy[1]), 3, (0,0,255), -1)
 
                     ground_point = [int(x) for x in annot['ground_point']]
                     cv2.circle(img2,(ground_point[0], ground_point[1]), 1, (0,0,255), 1)
-                    
 
             cv2.imshow('window', frame)
             cv2.imshow('topDown', img)
@@ -153,7 +160,14 @@ def viz_track():
             if cv2.waitKey(0) & 0xFF == ord('q'):
                 break
             counter += 1
-
+        
+        res = [k for k, v in stopped_vehicle.items() if v == 1]
+        with open(args.folder_path+'/stopped_vehicle.csv', 'w', newline='') as file:
+            fieldnames = ['video_file_path', 'stopped_vehicles']
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            [writer.writerow({'video_file_path': video_file_path, 'stopped_vehicles': i}) for i in res]
+        
     cv2.destroyAllWindows()
 
 def is_stoped(speed):
@@ -179,5 +193,5 @@ if __name__ == "__main__":
         video_on = 0
 
     to_coco(log_path, folders)
-    
+
     viz_track()
