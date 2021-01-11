@@ -8,5 +8,5 @@ python3 gta5_viz_track.py --folder_path=data/gta_99_test/vid-1 --video=0
 ## Демо-видео:
 https://youtu.be/ttnZL_HjbXw
 <p align="left">
-  <img src="Screenshot from 2021-01-11 17-53-40.png">
+  <img src="Screenshot from 2021-01-11 17-53-40.png" width="500">
 </p>
