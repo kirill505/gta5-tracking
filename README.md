@@ -4,3 +4,9 @@
 
 python3 gta5_viz_track.py --folder_path=data/gta_99_test/vid-1 --video=0
 --video=0 - запуск визуализации bbox-ов без видео
+
+## Демо-видео:
+https://youtu.be/ttnZL_HjbXw
+<p align="left">
+  <img src="images/screen.jpg">
+</p>
